@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chronicles of Architecture — Layer by Layer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <style>
+    :root {
+      --font-heading: 'Cinzel', serif;
+      --font-body: 'Montserrat', sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #050505;
+      color: #ffffff;
+      font-family: var(--font-body);
+      overflow-x: hidden;
+      cursor: none;
+      transition: background-color 1s ease;
+    }
+
+    /* Custom Cursor */
+    .cursor-dot, .cursor-ring {
+      position: fixed;
+      top: 0; left: 0;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    .cursor-dot {
+      width: 6px; height: 6px;
+      background: #fff;
+    }
+    .cursor-ring {
+      width: 40px; height: 40px;
+      border: 1px solid rgba(255,255,255,0.5);
+      transition: width 0.3s, height 0.3s, border-color 0.3s;
+    }
+
+    /* Scroll Proxy for Z-Scrolling */
+    #scroll-proxy {
+      height: 1500vh; /* 3 stories * 3 layers * ~150vh */
+      width: 100%;
+    }
+
+    /* Fixed Viewport for Layers */
+    #viewport {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      perspective: 1000px;
+    }
+
+    /* Particles */
+    #particles {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .particle {
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+
+    /* Stories & Layers */
+    .story {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    
+    .layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      opacity: 0;
+      transform: scale(0.5);
+      padding: 2rem;
+      will-change: transform, opacity, filter;
+    }
+
+    /* Typography */
+    h1, h2 {
+      font-family: var(--font-heading);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      margin-bottom: 1rem;
+    }
+
+    .title {
+      font-size: clamp(4rem, 12vw, 10rem);
+      font-weight: 700;
+      line-height: 1;
+      text-shadow: 0 0 30px var(--theme-color);
+    }
+
+    .subtitle {
+      font-size: clamp(1.5rem, 4vw, 3rem);
+      color: var(--theme-color);
+      margin-bottom: 2rem;
+    }
+
+    .desc {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      max-width: 600px;
+      line-height: 1.8;
+      opacity: 0.8;
+    }
+
+    .char {
+      display: inline-block;
+    }
+
+    /* Progress Indicator */
+    .progress-container {
+      position: fixed;
+      right: 2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      z-index: 100;
+    }
+    .progress-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid #fff;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .progress-dot.active {
+      background: var(--theme-color, #fff);
+      transform: scale(1.5);
+      border-color: var(--theme-color, #fff);
+    }
+
+    /* Floating Elements */
+    .floating-img {
+      position: absolute;
+      border-radius: 10px;
+      opacity: 0.3;
+      filter: grayscale(100%) contrast(120%);
+      mix-blend-mode: overlay;
+      z-index: -1;
+    }
+
+    /* Story Specific Themes */
+    [data-story="1"] { --theme-color: #c9a84c; } /* Gold - RISE */
+    [data-story="2"] { --theme-color: #2ecc71; } /* Emerald - DEPTH */
+    [data-story="3"] { --theme-color: #b537f2; } /* Neon - AURA */
+
+    .scroll-hint {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.8rem;
+      letter-spacing: 0.2em;
+      opacity: 0.5;
+      animation: pulse 2s infinite;
+      z-index: 50;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: translate(-50%, 0); }
+      50% { opacity: 0.8; transform: translate(-50%, 10px); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Custom Cursor -->
+  <div class="cursor-dot"></div>
+  <div class="cursor-ring"></div>
+
+  <!-- Scroll Proxy -->
+  <div id="scroll-proxy"></div>
+
+  <div class="scroll-hint">SCROLL TO DIVE DEEPER</div>
+
+  <!-- Progress Dots -->
+  <div class="progress-container">
+    <div class="progress-dot" id="dot-0"></div>
+    <div class="progress-dot" id="dot-1"></div>
+    <div class="progress-dot" id="dot-2"></div>
+  </div>
+
+  <!-- Fixed Viewport for Z-Scrolling -->
+  <div id="viewport">
+    <div id="particles"></div>
+
+    <!-- STORY 1: RISE -->
+    <div class="story" data-story="1" data-bg="#0a0a0a">
+      <div class="layer">
+        <h1 class="title split-text">RISE</h1>
+        <h2 class="subtitle">The Skyscraper</h2>
+        <p class="desc">A monument of glass and steel piercing the heavens. We didn't just want to touch the sky; we wanted to conquer it.</p>
+      </div>
+      <div class="layer">
+        <h2 class="subtitle">142 Floors of Innovation</h2>
+        <p class="desc">Smart glass facades that breathe with the wind. Tuned mass dampers dancing with the storms. Engineering pushed to the absolute limit.</p>
+      </div>
+      <div class="layer">
+        <h1 class="title">THE APEX</h1>
+        <p class="desc">Above the clouds, silence reigns. A new legacy etched into the skyline forever.</p>
+      </div>
+    </div>
+
+    <!-- STORY 2: DEPTH -->
+    <div class="story" data-story="2" data-bg="#051005">
+      <div class="layer">
+        <h1 class="title split-text">DEPTH</h1>
+        <h2 class="subtitle">The Subterranean City</h2>
+        <p class="desc">When the surface grew hostile, we looked downward. Returning to the earth's embrace, carving sanctuaries in the bedrock.</p>
+      </div>
+      <div class="layer">
+        <h2 class="subtitle">Geothermal Core</h2>
+        <p class="desc">Powered by the planet's heartbeat. Bioluminescent gardens replacing the sun. A self-sustaining ecosystem miles below the surface.</p>
+      </div>
+      <div class="layer">
+        <h1 class="title">THE ROOTS</h1>
+        <p class="desc">We are no longer visitors on this planet. We have become part of its foundation.</p>
+      </div>
+    </div>
+
+    <!-- STORY 3: AURA -->
+    <div class="story" data-story="3" data-bg="#0a0515">
+      <div class="layer">
+        <h1 class="title split-text">AURA</h1>
+        <h2 class="subtitle">The Orbital Tether</h2>
+        <p class="desc">Gravity was our oldest cage. The space elevator snapped the lock, bridging the gap between dirt and stars.</p>
+      </div>
+      <div class="layer">
+        <h2 class="subtitle">Carbon Nanotubes</h2>
+        <p class="desc">A ribbon of diamond-hard carbon stretching 36,000 kilometers into the void. The highway to humanity's next chapter.</p>
+      </div>
+      <div class="layer">
+        <h1 class="title">THE INFINITE</h1>
+        <p class="desc">Looking back, the Earth is just a blue marble. Looking forward, the universe awaits.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    gsap.registerPlugin(ScrollTrigger);
+
+    // --- UTILITIES ---
+    // Split text for animation
+    document.querySelectorAll('.split-text').forEach(el => {
+      const text = el.innerText;
+      el.innerHTML = text.split('').map(char => 
+        char === ' ' ? '&nbsp;' : `<span class="char">${char}</span>`
+      ).join('');
+    });
+
+    // --- CUSTOM CURSOR ---
+    const cursorDot = document.querySelector('.cursor-dot');
+    const cursorRing = document.querySelector('.cursor-ring');
+    
+    window.addEventListener('mousemove', (e) => {
+      gsap.to(cursorDot, { x: e.clientX, y: e.clientY, duration: 0.1 });
+      gsap.to(cursorRing, { x: e.clientX, y: e.clientY, duration: 0.4, ease: "power2.out" });
+    });
+
+    // --- PARTICLES ---
+    const particlesContainer = document.getElementById('particles');
+    const particles = [];
+    for(let i=0; i<50; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random() * 4 + 1;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.top = Math.random() * 100 + 'vh';
+      particlesContainer.appendChild(p);
+      particles.push(p);
+    }
+
+    function animateParticles(direction) {
+      particles.forEach(p => {
+        gsap.to(p, {
+          y: direction === 'up' ? '-=100vh' : direction === 'down' ? '+=100vh' : (Math.random() * 200 - 100) + 'vh',
+          x: direction === 'radial' ? (Math.random() * 200 - 100) + 'vw' : '+=0',
+          duration: Math.random() * 10 + 5,
+          repeat: -1,
+          ease: "none",
+          modifiers: {
+            y: gsap.utils.unitize(y => parseFloat(y) % window.innerHeight),
+            x: gsap.utils.unitize(x => parseFloat(x) % window.innerWidth)
+          }
+        });
+      });
+    }
+    animateParticles('up'); // Initial direction
+
+    // --- MAIN Z-SCROLL ANIMATION ---
+    const stories = gsap.utils.toArray('.story');
+    
+    // Master Timeline linked to scroll
+    const masterTl = gsap.timeline({
+      scrollTrigger: {
+        trigger: "#scroll-proxy",
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 1.5, // Smooth scrubbing
+      }
+    });
+
+    stories.forEach((story, sIdx) => {
+      const layers = gsap.utils.toArray(story.querySelectorAll('.layer'));
+      const bgColor = story.getAttribute('data-bg');
+      const themeColor = getComputedStyle(story).getPropertyValue('--theme-color').trim();
+
+      layers.forEach((layer, lIdx) => {
+        const isFirst = (sIdx === 0 && lIdx === 0);
+        const isLast = (sIdx === stories.length - 1 && lIdx === layers.length - 1);
+
+        // 1. Animate IN (if not the very first layer)
+        if (!isFirst) {
+          masterTl.fromTo(layer, 
+            { opacity: 0, scale: 0.2, filter: 'blur(20px)' },
+            { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 2, ease: "power2.out" },
+            "-=1" // Overlap with previous layer fading out
+          );
+        } else {
+          // Initial state for first layer
+          gsap.set(layer, { opacity: 1, scale: 1, filter: 'blur(0px)' });
+          
+          // Intro text animation for the very first load
+          gsap.from(layer.querySelectorAll('.char'), {
+            opacity: 0, z: -100, rotationX: 90,
+            stagger: 0.1, duration: 1.5, ease: "back.out(1.7)", delay: 0.5
+          });
+          gsap.from(layer.querySelectorAll('.subtitle, .desc'), {
+            opacity: 0, y: 30, duration: 1, delay: 1.5
+          });
+        }
+
+        // Trigger events when a layer becomes fully active
+        masterTl.call(() => {
+          // Update Background
+          gsap.to('body', { backgroundColor: bgColor, duration: 1 });
+          
+          // Update Progress Dots
+          document.querySelectorAll('.progress-dot').forEach((dot, i) => {
+            if(i === sIdx) {
+              dot.classList.add('active');
+              dot.style.backgroundColor = themeColor;
+              dot.style.borderColor = themeColor;
+            } else {
+              dot.classList.remove('active');
+              dot.style.backgroundColor = 'transparent';
+              dot.style.borderColor = '#fff';
+            }
+          });
+        }, null, "-=1");
+
+        // 2. Animate OUT (if not the very last layer)
+        if (!isLast) {
+          masterTl.to(layer, 
+            { opacity: 0, scale: 4, filter: 'blur(20px)', duration: 2, ease: "power2.in" },
+            "+=1" // Hold for a moment before zooming past
+          );
+        }
+      });
+    });
+
+    // --- MOUSE PARALLAX ON ACTIVE LAYER ---
+    window.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 20;
+      const y = (e.clientY / window.innerHeight - 0.5) * 20;
+      
+      gsap.to('.layer', {
+        x: x,
+        y: y,
+        rotationY: x * 0.5,
+        rotationX: -y * 0.5,
+        duration: 1,
+        ease: "power2.out"
+      });
+    });
+
+  </script>
+</body>
+</html>
